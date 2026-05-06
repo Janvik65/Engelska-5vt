@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<title>Engelskaprov Åk 5</title>
+
+<style>
+body { font-family: Arial; max-width:900px; margin:auto; padding:20px; }
+h2 { color:#253858; }
+button { padding:10px; border-radius:8px; background:#253858; color:white; cursor:pointer; }
+.blank { border-bottom:2px solid black; padding:3px; margin:2px; cursor:pointer; }
+.correct { background:#bbf7d0; }
+.incorrect { background:#fecaca; }
+.chip { background:#ddd; padding:6px; margin:4px; display:inline-block; cursor:pointer; border-radius:6px; }
+.hidden { display:none; }
+</style>
+
+</head>
+<body>
+
+<h1>Engelskaprov Åk 5</h1>
+
+<!-- 🔐 LOGIN -->
+<div id="loginBox">
+  <p>Skriv ditt namn:</p>
+  <input id="name">
+  <button onclick="startTest()">Starta prov</button>
+</div>
+
+<!-- PROV -->
+<div id="testBox" class="hidden">
+
+<p><b id="studentName"></b></p>
+
+<div id="progressText"><b>Du har 47 frågor kvar</b></div>
+<div style="background:#eee;height:15px;border-radius:10px;">
+  <div id="bar" style="height:15px;width:0%;background:red;"></div>
+</div>
+<div id="msg"></div>
+
+<hr>
+
+<h2>Del 1 (20 frågor)</h2>
+<div id="part1"></div>
+
+<h2>Del 2 (15 ord)</h2>
+<div id="wordbank"></div>
+<p id="story"></p>
+
+<h2>Del 3 (12 frågor)</h2>
+<div id="part3"></div>
+
+<br>
+<button id="gradeBtn" disabled>Rätta och lås</button>
+
+<h2 id="result"></h2>
+
+</div>
+
+<script>
+
+// LOGIN
+function startTest(){
+  const name = document.getElementById("name").value;
+  if(!name) return alert("Skriv ditt namn");
+  
+  document.getElementById("loginBox").classList.add("hidden");
+  document.getElementById("testBox").classList.remove("hidden");
+  document.getElementById("studentName").innerHTML = "Elev: " + name;
+}
+
+// DATA
+const part1 = [
+["I ___ to school every day.",["go","goes","going","gone"],0],
+["She ___ happy today.",["is","are","am","be"],0],
+["We ___ football yesterday.",["play","played","playing","plays"],1],
+["What ___ you doing?",["is","are","do","did"],1],
+["My father ___ a car.",["have","has","had","having"],1],
+["There ___ many books.",["is","are","was","be"],1],
+["I like ___ apples.",["eat","eating","ate","eaten"],1],
+["She ___ to the shop.",["go","goes","went","going"],2],
+["Can you ___ me?",["help","helps","helped","helping"],0],
+["They ___ in Sweden.",["live","lives","lived","living"],0],
+["We ___ a house.",["has","have","had","having"],1],
+["He ___ TV.",["watch","watches","watched","watching"],1],
+["I ___ homework.",["do","does","doing","did"],0],
+["There ___ a cat.",["is","are","was","were"],0],
+["She ___ English.",["speak","speaks","spoke","speaking"],1],
+["We ___ tomorrow.",["go","goes","going","will go"],3],
+["He ___ a bike.",["buy","buys","bought","buying"],2],
+["I ___ milk.",["like","likes","liked","liking"],0],
+["They ___ playing.",["is","are","was","were"],1],
+["She ___ friends.",["visit","visits","visited","visiting"],1]
+];
+
+const storyKeys = ["went","saw","looked","was","played","made","ate","drank","came","gave","bought","ran","had","said","slept"];
+let wordBank = [...storyKeys].sort(()=>Math.random()-0.5);
+
+// STORY TEXT
+const storyText = [
+"Yesterday I "," to the park. We "," a tree and "," at birds. It "," sunny. We "," football and "," lunch. I "," a sandwich and "," juice. My sister "," and "," me a ball she ",". We "," and ",". I "," 'Great day' and ","."
+];
+
+// PART 3
+const part3 = [
+["How old is Tom?","ten"],
+["Where does he live?","town"],
+["When does he wake up?","seven"],
+["What does he do after waking?","breakfast"],
+["How does he go to school?","walk"],
+["Why does he like school?","learn"],
+["Favorite subject?","science"],
+["After school?","homework"],
+["Evening?","tv"],
+["Weekend?","bike"],
+["Where football?","park"],
+["Big city?","no"]
+];
+
+// RENDER PART1
+part1.forEach((q,i)=>{
+  let div=document.createElement("div");
+  div.innerHTML=`${i+1}. ${q[0]}<br>${q[1].map((o,j)=>`<label><input type="radio" name="p1${i}" value="${j}">${o}</label>`).join(" ")}`;
+  document.getElementById("part1").append(div);
+  document.querySelectorAll(`input[name=p1${i}]`).forEach(r=>r.onchange=updateProgress);
+});
+
+// STORY
+let storyEl=document.getElementById("story");
+for(let i=0;i<storyKeys.length;i++){
+  storyEl.append(storyText[i]);
+  let b=document.createElement("span");
+  b.className="blank";
+  b.dataset.index=i;
+  b.textContent="____";
+  b.onclick=()=>active=b;
+  storyEl.append(b);
+}
+storyEl.append(storyText[storyText.length-1]);
+
+let active=null;
+
+// WORD BANK
+wordBank.forEach(w=>{
+  let chip=document.createElement("span");
+  chip.className="chip";
+  chip.textContent=w;
+  chip.onclick=()=>{
+    if(!active) return;
+    active.textContent=w;
+    active.dataset.value=w;
+    active=null;
+    updateProgress();
+  };
+  document.getElementById("wordbank").append(chip);
+});
+
+// PART 3
+part3.forEach((q,i)=>{
+  let div=document.createElement("div");
+  div.innerHTML=`${i+1}. ${q[0]}<br><textarea></textarea>`;
+  document.getElementById("part3").append(div);
+});
+document.querySelectorAll("textarea").forEach(t=>t.oninput=updateProgress);
+
+// PROGRESS
+function updateProgress(){
+  let remaining=0;
+
+  part1.forEach((_,i)=>{
+    if(!document.querySelector(`input[name=p1${i}]:checked`)) remaining++;
+  });
+
+  document.querySelectorAll(".blank").forEach(b=>{
+    if(!b.dataset.value) remaining++;
+  });
+
+  document.querySelectorAll("textarea").forEach(t=>{
+    if(!t.value.trim()) remaining++;
+  });
+
+  let total=47;
+  let done=total-remaining;
+  let percent=Math.round(done/total*100);
+
+  document.getElementById("progressText").innerHTML =
+    remaining===0 ? "✅ Alla frågor klara!" : `🚫 ${remaining} frågor kvar`;
+
+  document.getElementById("bar").style.width=percent+"%";
+  document.getElementById("bar").style.background =
+    percent<50?"red":percent<80?"orange":"green";
+
+  document.getElementById("msg").innerHTML =
+    percent<50?"Bra start 👍":
+    percent<80?"Halvvägs 💪":
+    percent<100?"Snart klar 🌟":"Redo ✅";
+
+  document.getElementById("gradeBtn").disabled = remaining!==0;
+}
+
+// RÄTTA
+document.getElementById("gradeBtn").onclick=()=>{
+  if(this.disabled) return alert("Svara på allt först");
+  if(!confirm("Vill du rätta och låsa?")) return;
+
+  let score=0;
+
+  // Del 1
+  part1.forEach((q,i)=>{
+    let sel=document.querySelector(`input[name=p1${i}]:checked`);
+    if(sel && sel.value==q[2]) score++;
+  });
+
+  // Del 2
+  document.querySelectorAll(".blank").forEach((b,i)=>{
+    if(b.dataset.value==storyKeys[i]){
+      score++; b.classList.add("correct");
+    } else b.classList.add("incorrect");
+    b.style.pointerEvents="none";
+  });
+
+  // Del 3
+  document.querySelectorAll("textarea").forEach((t,i)=>{
+    if(t.value.toLowerCase().includes(part3[i][1])) score++;
+    t.disabled=true;
+  });
+
+  document.querySelectorAll("input").forEach(i=>i.disabled=true);
+
+  let level = score>=41?"A":score>=30?"C":"E";
+
+  document.getElementById("result").innerHTML =
+    `Resultat: ${score}/47 (${level})<br>
+     ${score>=41?"🌟 Mycket bra!":score>=30?"✅ Bra jobbat!":"👍 Fortsätt öva!"}`;
+
+  this.disabled=true;
+};
+
+updateProgress();
+
+</script>
+
+</body>
+</html>
